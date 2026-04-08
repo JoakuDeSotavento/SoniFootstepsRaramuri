@@ -17,14 +17,12 @@ let samples = null;
 
 const footstepsBank = {
   1:  '14-chord2.mp3',
-
   4: 'control_frame_aspL1.wav',
   5: 'low_frame_aspL1.wav',
   6: 'high_frame_aspL1.wav',
   1: 'control_frame_aspR1.wav',
   2: 'low_frame_aspR1.wav',
   3: 'high_frame_aspR1.wav',
-
 };
 
 
@@ -83,10 +81,9 @@ export async function defineSharedState(como) {
       },
 
       condition: {
-        type: 'integer',
-        default: 2,
-        min: 1,
-        max: 3,
+        type: 'enum',
+        list: [1, 2, 3],
+        default: 1,
       },
 
       eventLeft: {
@@ -105,15 +102,17 @@ export async function defineSharedState(como) {
   };
 }
 
-
-
-
+// define your global variables
+// define you audio routing
+// define mapping with shared state
 
 /**
  * Function executed when the player enters the script
  */
 export async function enter(context) {
   const { scriptName, output, state, soundbank, frame } = context;
+
+  // define mappings between the state and analysis / synthesis
 
   console.log('[script:enter]', scriptName);
   console.log(soundbank);
@@ -122,23 +121,12 @@ export async function enter(context) {
   let samples = null;
 
   let soundbankSources = null;
-  let soundbankSourcesRevel = null;
   let gyroThresholdValue = 2;
   let triggerDelay = 0;
-  let condition= 1;
+  let condition = 1;
   // Initialize scalers when entering script
 
-  // const soundscapeSynth = createLayerSynth(audioContext, "dyn-forest-1");
-  // (await soundscapeSynth).connect(output);
-
-  // create Revel test volume interaction gain nodes
-
-  gainValid = new GainNode(audioContext);
-
-  const { sampleRate } = audioContext;
-
-
-
+  const gainValid = new GainNode(audioContext);
 
   const allSampleNames = [
     ...Object.values(footstepsBank),
@@ -146,25 +134,18 @@ export async function enter(context) {
   const uniqueSampleNames = [...new Set(allSampleNames)];
   samples = await como.soundbankManager.getBuffers(uniqueSampleNames);
 
-
-
-
-
   gainValid.connect(output);
+
   context.samples = samples;
   context.gainValid = gainValid;
   context.gyroThresholdValue = gyroThresholdValue;
   context.triggerDelay = triggerDelay;
   context.soundbankSources = soundbankSources;
-  context.soundbankSourcesRevel = soundbankSourcesRevel;
-context.condition = condition;
-
-
-context.soundbankSources = startSoundbank(audioContext, soundbank, gainValid);
-
+  context.condition = condition;
+  context.soundbankSources = startSoundbank(audioContext, soundbank, gainValid);
 
   /** Listen for shared state changes */
-  const unsubscribe = state.onUpdate((newValues, oldValues) => {
+  context.unsubscribe = state.onUpdate((newValues, oldValues) => {
     for (let [key, value] of Object.entries(newValues)) {
       switch (key) {
         case 'startValidationTrack':
@@ -176,8 +157,6 @@ context.soundbankSources = startSoundbank(audioContext, soundbank, gainValid);
           } break;
         case 'gyroThreshold':
           context.gyroThresholdValue = value;
-          //context.gyroThresholdValue.set({ inputEnd: gyroThresholdValuesc });
-          // context.headingDeviationToWhiteNoiseVolume.set({ inputEnd: sensitivityValue });
           break;
         case 'delay':
           context.triggerDelay = value;
@@ -191,48 +170,17 @@ context.soundbankSources = startSoundbank(audioContext, soundbank, gainValid);
     }
   });
 
-
-
-
-
-  console.log(context.samples);
-
-  console.log('Script ready');
-  // Save unsubscribe to context for cleanup on exit
-  context.unsubscribe = unsubscribe;
-
-
-
+  console.log('Script ready, # smaples', context.samples.length);
 }
-
-
-
 
 export async function exit(context) {
   const { scriptName, output, state, soundbank } = context;
   console.log('[script:exit]', scriptName);
 
-  stopSoundBank(context.soundbankSourcesRevel);
-
-
-
   stopSoundBank(context.soundbankSources);
-  if (context.unsubscribe) {
-    context.unsubscribe();
-    context.unsubscribe = null;
-  }
-
+  context.unsubscribe();
 
   console.log('[script:exit]', scriptName);
-
-
-
-
-  // Unsubscribe from state updatesd
-  if (context.unsubscribe) {
-    context.unsubscribe();
-    context.unsubscribe = null;
-  }
 }
 
 

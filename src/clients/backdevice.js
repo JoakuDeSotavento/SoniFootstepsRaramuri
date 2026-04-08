@@ -11,8 +11,7 @@ import ComoClient from '@ircam/como/ComoClient.js';
 
 const OSC_PORT1= 8890;
 const OSC_PORT2= 8888;
-// @todo - fixme
-const targetSessionId = "c2414a35-4d0a-46d4-82e8-1288009ab82d";
+
 
 async function bootstrap() {
   const config = loadConfig(process.env.ENV, import.meta.url);
@@ -45,8 +44,7 @@ async function bootstrap() {
 
   const playerId = await como.playerManager.createPlayer(aggregatedSourceId);
   const player = await como.playerManager.getPlayer(playerId);
-  // @todo - player.setSession(sessionNameOrId);
-  await player.state.set({ sessionId: targetSessionId });
+  // await player.setScript('test-layer-synth.js');
 }
 
 // The launcher allows to launch multiple clients in the same terminal window

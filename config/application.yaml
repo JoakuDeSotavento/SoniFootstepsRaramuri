@@ -6,3 +6,5 @@ clients:
     default: true
   device:
     runtime: node
+  ext:
+    runtime: node

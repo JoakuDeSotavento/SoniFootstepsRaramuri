@@ -22,57 +22,34 @@ async function main($container) {
     initScreensContainer: $container,
     reloadOnVisibilityChange: false,
   });
-const como = new ComoClient(client);
+
+  const como = new ComoClient(client);
   await como.start();
 
-  const targetSessionId = "c2414a35-4d0a-46d4-82e8-1288009ab82d";
 
-  const autoLoadSession = async () => {
-    // 1. CRITICAL GUARD: Check if BOTH project and state are ready
-    if (como.project && como.project.state) {
-      
-      // 2. Check if the 'sessions' parameter actually exists in the state
-      const schema = como.project.state.getSchema();
-      const sessions = como.project.state.get('sessions');
-      
-      if (sessions && sessions[targetSessionId]) {
-        try {
-          // 3. Set the session using the wrapper method
-          await como.project.set({ sessionId: targetSessionId });
-          
-          console.log(`%c[Success] Attached to session: test`, "color: #00ff00; font-weight: bold");
-          return true; // Stop the interval
-        } catch (err) {
-          // If sessionId is wrong, look for the correct key in the schema
-          console.warn("[AutoLoad] 'sessionId' failed. Available keys:", Object.keys(schema));
-          return true; // Stop the interval to prevent error loops
-        }
-      }
-    }
+/** 
+// --- NEW: Observe the session state to catch the save trigger ---
+  como.project.subscribe(async () => {
+  const sessionIds = como.project.get('sessionIds'); 
+  for (let id of sessionIds) {
+    const session = await como.project.getSession(id);
     
-    // If we reach here, the state isn't ready or sessions aren't loaded yet
-    return false;
-  };
+    // Listen for the saveRequest we sent from the script
+    session.onUpdate(updates => {
+      if (updates.saveRequest) {
+        console.log("Controller received data!", updates.saveRequest);
+        downloadBlobAsFile(updates.saveRequest.filename, updates.saveRequest.text);
+      }
+    });
+  }
+});
 
-  // 4. Poll every 100ms until the project is synchronized
-  const retry = setInterval(async () => {
-    const success = await autoLoadSession();
-    if (success) {
-      clearInterval(retry);
-    }
-  }, 100);
-
-  
-
-
-
-  
+*/
 
   const controller = await como.stateManager.create('controller', {
     showEditScriptPanel: false,
-    
   });
-  
+
   controller.onUpdate(renderApp, true);
 
   function renderApp() {
