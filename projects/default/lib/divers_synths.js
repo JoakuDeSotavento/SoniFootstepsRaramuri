@@ -1,5 +1,8 @@
 // load and play buffers selcted from the sound bank // 
 
+import { decibelToLinear } from '@ircam/sc-utils';
+
+
 export function startSoundbank(audioContext, soundbank, output) {
     if (Object.keys(soundbank).length === 0) {
         return;
@@ -89,7 +92,7 @@ export function stopWhiteNoise() {
     }
 }
 
-export function playSampleWithEnvelope(audioContext, buffer, adsrParams, noteParams, output) {
+export function playSampleWithEnvelope(audioContext, buffer, adsrParams, noteParams, output,volumeDb = 0) {
     if (!buffer) return;
     
     // Create source and gain node for envelope
@@ -131,26 +134,21 @@ export function playSampleWithEnvelope(audioContext, buffer, adsrParams, notePar
 };
 
 
-export function playSample(audioContext, buffer, triggerDelay, output) {
-    if (!buffer) return;
-    
-    // Create source and gain node for envelope
+export function playSample(audioContext, buffer, triggerDelay, output, volumeDb = 0) {
+    if (!buffer) return;    
     const source = audioContext.createBufferSource();
-    
+    const gainNode = audioContext.createGain();
     source.buffer = buffer;
-    source.loop = true;
-    
-    // Connect: source -> envelopeGain -> output
-    source.connect(output);
-    
-    // Use configured note duration instead of full buffer
-    const noteDuration = buffer.duration;
+    source.loop = true; 
+    gainNode.gain.value = decibelToLinear(volumeDb);    
+    source.connect(gainNode);
+    gainNode.connect(output);    
     const currentTime = audioContext.currentTime;
-    
-    
-    // Start playback from noteParams.startTime, stop after noteDuration
-    source.start(triggerDelay,triggerDelay);
-    source.stop(currentTime + noteDuration + triggerDelay);
+    const startTime = currentTime + triggerDelay;
+        // Start at the calculated time
+    source.start(startTime);
+    // Stop after the buffer duration
+    source.stop(startTime + buffer.duration);
 };
 
 export function playChordWithEnvelope(audioContext, buffers, adsrParams, noteParams, output, volume = 1.0) {

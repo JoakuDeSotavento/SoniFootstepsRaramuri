@@ -17,10 +17,12 @@
     "watch:sass": "sass --watch src/styles:.build/public/css"
   },
   "dependencies": {
-    "@ircam/como": "^2.0.0-beta.9",
+    "@ircam/como": "^2.0.0-beta.10",
     "@ircam/sc-components": "^3.5.0",
     "@ircam/sc-loader": "^1.1.0",
     "@ircam/sc-scheduling": "^1.0.0",
+    "@ircam/sc-signal": "^1.2.0",
+    "@ircam/sc-utils": "^1.13.0",
     "@soundworks/core": "^5.4.1",
     "@soundworks/helpers": "^5.0.4",
     "lit": "^3.1.3",
