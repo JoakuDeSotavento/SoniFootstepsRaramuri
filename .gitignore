@@ -15,6 +15,3 @@ Thumbs.db
 # TLS certificates
 /**/*.pem
 
-/projects
-# if some projects must be tracked in git, just add them manually
-# !/projects
