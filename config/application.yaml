@@ -1,10 +1,10 @@
-name: como-health
+name: soni-footsteps-raramuri
 author: ""
 clients:
   controller:
     runtime: browser
-    default: true
   device:
     runtime: node
-  ext:
-    runtime: node
+  walker:
+    runtime: browser
+    default: true

@@ -5,6 +5,8 @@
 // * @param {*} como - instance of the como node
  */
 import { startSoundbank, stopSoundBank, playSampleWithEnvelope, playSample } from '../lib/divers_synths.js';
+import { createLayerSynth, list } from '../../../synths/layer-synth/layer-synth.js';
+import { decibelToLinear } from '@ircam/sc-utils';
 
 import { Lowpass } from '@ircam/sc-signal';
 
@@ -14,7 +16,32 @@ const {
   como,
 } = getGlobalScriptingContext();
 
+let unsubscribeSharedState;
 let samples = null;
+let soundbankSources = null;
+let randomFrame = 0;
+
+const conditionConfigs = {
+  'Control': { volKey: 'volumeC', volume: 0 },
+  'Low-Frequency': { volKey: 'volumeLF', volume: 0 },
+  'High-Frequency': { volKey: 'volumeHF', volume: 0 }
+};
+const sampleRate = 100;
+const cutOff = 10;
+let lowpassL = new Lowpass(sampleRate, cutOff);
+let lowpassR = new Lowpass(sampleRate, cutOff);
+
+let sonificationGain = null;
+let backgroundGain = null;
+let backgroundSynth = null;
+
+
+let filteredL = 0;
+let filteredR = 0;
+let isInSwingL = false;
+let isInSwingR = false;
+
+let writer;
 
 const footstepsBank = {
 
@@ -82,12 +109,9 @@ const noteParams = {
   startTime: 0     // Start offset in sample (0 = beginning)
 };
 
-
-let gainValid = null;
 export async function defineSharedState(como) {
   return {
     classDescription: {
-
       startValidationTrack: {
         type: 'boolean',
         default: false,
@@ -97,294 +121,263 @@ export async function defineSharedState(como) {
       //        event: true,
 
       //    },
-
-    invertThreshold: {
+      invertThreshold: {
         type: 'boolean',
         default: false,
       },
-
       gyroThreshold: {
         type: 'float',
         default: 2,
         min: 0,
         max: 4,
       },
-
       delay: {
         type: 'float',
         default: 0,
         min: 0,
         max: 200,
       },
-
       limitGatems: {
         type: 'float',
         default: 0,
         min: 0,
         max: 500,
       },
-
-
       condition: {
         type: 'enum',
         list: ['Control', 'Low-Frequency', 'High-Frequency'],
         default: 'Control',
       },
-    
+      sonificationVolume: {
+        type: 'float',
+        default: 0,
+        min: -80,
+        max: 12,
+      },
       volumeC: {
         type: 'float',
         default: 0,
         min: -6,
         max: 0,
       },
-      
       volumeLF: {
         type: 'float',
         default: -3,
         min: -6,
         max: 0,
       },
-
       volumeHF: {
         type: 'float',
         default: 0,
         min: -6,
         max: 0,
       },
-
-
       eventLeft: {
         type: 'boolean',
         event: true,
       },
-
       eventRight: {
         type: 'boolean',
         event: true,
       },
-
-
+      // background synth stuff
+      enableBackgroundSynth: {
+        type: 'boolean',
+        default: false,
+      },
+      backgroundSynthVolume: {
+        type: 'float',
+        default: 0,
+        min: -80,
+        max: 12,
+      },
+      backgroundSynthSoundbank: {
+        type: 'enum',
+        default: 'nature-foret',
+        list: list,
+      },
     },
     initValues: {},
   };
 }
 
-
-
-
-
 /**
  * Function executed when the player enters the script
  */
 export async function enter(context) {
-  const { scriptName, output, state, soundbank, frame } = context;
+  const { scriptName, output, state, soundbank } = context;
 
   console.log('[script:enter]', scriptName);
-  console.log(soundbank);
-
-  // Initialize soundbank sources and samples fresh when entering script
-  let samples = null;
-
-  let soundbankSources = null;
-  let gyroThresholdValue = 2;
-  let triggerDelay = 0;
-  let condition= 1;
-  let limitGatems = 0;
-  let randomFrame=0;
-  let volumeC=0;
-  let volumeHF=0;
-  let volumeLF=0;
-  let volumeCond=0;
-  const conditionConfigs = {
-    'Control': { id: 1, volKey: 'volumeC' },
-    'Low-Frequency': { id: 2, volKey: 'volumeLF' },
-    'High-Frequency': { id: 3, volKey: 'volumeHF' }
-  };
-  // Initialize scalers when entering script
-
-  // const soundscapeSynth = createLayerSynth(audioContext, "dyn-forest-1");
-  // (await soundscapeSynth).connect(output);
-
   // create Revel test volume interaction gain nodes
+  sonificationGain = new GainNode(audioContext);
+  sonificationGain.connect(output);
 
-  gainValid = new GainNode(audioContext);
+  backgroundGain = new GainNode(audioContext);
+  backgroundGain.connect(output);
 
-
-
-  const allSampleNames = [
-    ...Object.values(footstepsBank),
-  ];
+  const allSampleNames = Object.values(footstepsBank);
   const uniqueSampleNames = [...new Set(allSampleNames)];
+
   samples = await como.soundbankManager.getBuffers(uniqueSampleNames);
 
-
-
-
-
-  gainValid.connect(output);
-  state.samples = samples;
-
-  //state.gainValid = gainValid;
-  state.gyroThresholdValue = gyroThresholdValue;
-  state.triggerDelay = triggerDelay;
-
-  state.soundbankSources = soundbankSources;
-
-  
-  state.condition = condition;
-  state.limitGatems = limitGatems;
-  state.volumeC = volumeC;
-  state.volumeLF = volumeLF;
-  state.volumeHF = volumeHF;
-  state.randomFrame = randomFrame;
-  state.volumeCond = volumeCond;
   /** Listen for shared state changes */
-  const unsubscribe = state.onUpdate((newValues, oldValues) => {
+  unsubscribeSharedState = state.onUpdate(async (newValues, oldValues) => {
     for (let [key, value] of Object.entries(newValues)) {
       switch (key) {
-        case 'startValidationTrack':
-          if (value && context.soundbankSources === null) {
-            context.soundbankSources = startSoundbank(audioContext, soundbank, gainValid);
-          } else if (!value && context.soundbankSources !== null) {
-            stopSoundBank(context.soundbankSources);
-            context.soundbankSources = null;
-          } break;
-        case 'gyroThreshold':
-          state.gyroThresholdValue = value;
-          break;
-        case 'delay':
-          state.triggerDelay = value;
-          break;
-        case 'condition': {
-          const config = conditionConfigs[value];
-          state.condition = config.id;
-          state.volumeCond = state.get(config.volKey);
+        case 'startValidationTrack': {
+          if (value && soundbankSources === null) {
+            soundbankSources = startSoundbank(audioContext, soundbank, output);
+          } else if (!value && soundbankSources !== null) {
+            stopSoundBank(soundbankSources);
+            soundbankSources = null;
+          }
           break;
         }
-        case 'limitGatems':
-          state.limitGatems = value;
+        case 'sonificationVolume': {
+          const gain = decibelToLinear(value);
+          sonificationGain.gain.setTargetAtTime(gain, audioContext.currentTime, 0.005);
           break;
-          
-        case 'volumeC':
-        case 'volumeLF':
+        }
+        case 'volumeC': {
+          conditionConfigs['Control'].volume = value;
+          break;
+        }
+        case 'volumeLF': {
+          conditionConfigs['Low-Frequency'].volume = value;
+          break;
+        }
         case 'volumeHF': {
-          // If the slider being moved matches the current active condition, update context.volumeCond
-          const currentConfig = conditionConfigs[state.get('condition')];
-          if (key === currentConfig.volKey) {
-            state.volumeCond = value;
-         }
-        break;
-            }
+          conditionConfigs['High-Frequency'].volume = value;
+          break;
+        }
+        case 'backgroundSynthVolume': {
+          const gain = decibelToLinear(value);
+          backgroundGain.gain.setTargetAtTime(gain, audioContext.currentTime, 0.005);
+          break;
+        }
+        case 'enableBackgroundSynth':
+        case 'backgroundSynthSoundbank': {
+          if (backgroundSynth) {
+            backgroundSynth.stop();
+            backgroundSynth = null;
+          }
+
+          if (state.get('enableBackgroundSynth')) {
+            const soundbank = state.get('backgroundSynthSoundbank');
+            backgroundSynth = await createLayerSynth(audioContext, audioBufferLoader, soundbank);
+            backgroundSynth.connect(backgroundGain);
+            backgroundSynth.start();
+          }
+          break;
+        }
         default:
           break;
       }
     }
-  });
+  }, true);
 
+  // console.log(samples);
 
+  // create a writer for logs
+  // writer = await como.logger.createWriter(`${scriptName}.txt`, { bufferSize: 100 });
 
-
-
-  console.log(state.samples);
+  // setInterval(() => {
+  //   const someData = {
+  //     timestamp: como.sync.getSyncTime(),
+  //     x: Math.random(),
+  //     y: Math.random(),
+  //     z: Math.random(),
+  //   }
+  //   writer.write(JSON.stringify(someData));
+  // }, 100);
 
   console.log('Script ready');
-  // Save unsubscribe to context for cleanup on exit
-  context.unsubscribe = unsubscribe;
-
-
-const sampleRate = 100; 
-const cutOff = 10; 
-  state.lowpassL = new Lowpass(sampleRate,cutOff);
-  state.lowpassR = new Lowpass(sampleRate,cutOff);
- 
 
 }
-
-
-
 
 export async function exit(context) {
   const { scriptName, output, state, soundbank } = context;
   console.log('[script:exit]', scriptName);
 
-  stopSoundBank(context.soundbankSources);
-  context.unsubscribe();
+  unsubscribeSharedState();
+  // close the writer,
+  console.log('close writer');
+  if (writer) {
+    await writer.close();
+  }
 
-  console.log('[script:exit]', scriptName);
+  console.log('stop soundbank');
+  stopSoundBank(soundbankSources);
+
+  if (backgroundSynth) {
+    console.log('stop background synth');
+    backgroundSynth.stop();
+  }
 }
 
-
-
-
 export async function process(context, frame) {
-  const { scriptName, output, state, soundbank, gainValid, gainAccomp, gainWhiteNoise } = context;
+  const { scriptName, output, state, soundbank } = context;
 
   // 1. Raw inputs
   let rawL = frame[1].gyroscope.z;
   let rawR = -1 * frame[0].gyroscope.z; // Normalizing Right to be positive
-  let triggerDelayS = state.triggerDelay;
-  let conditionSet = state.condition;
 
-  // 2. Initialize Persistent State
-  if (state.lastSide === undefined) state.lastSide = null;
-  if (state.filteredL === undefined) state.filteredL = 0;
-  if (state.filteredR === undefined) state.filteredR = 0;
-  if (state.isInSwingL === undefined) state.isInSwingL = false;
-  if (state.isInSwingR === undefined) state.isInSwingR = false;
-  
   // NEW: Initialize timestamp tracking
-  if (state.lastTriggerTime === undefined) state.lastTriggerTime = 0;
+  if (lastTriggerTime === undefined) lastTriggerTime = 0;
 
   // APPLY LOW-PASS FILTER
- 
-    state.filteredL = state.lowpassL.process(rawL,100,10);
-    state.filteredR = state.lowpassR.process(rawR,100,10);
-
+  filteredL = lowpassL.process(rawL,100,10);
+  filteredR = lowpassR.process(rawR,100,10);
 
   const now = Date.now();
-  const minInterval = state.limitGatems; // The limitGatems rule
+  const condition = state.get('condition');
+  const limitGatems = state.get('limitGatems');
+  const delay = state.get('delay');
+  const gyroThreshold = state.get('gyroThreshold');
+  const conditionOffset = Object.keys(conditionConfigs).indexOf(condition) + 1;
+  const volume = conditionConfigs[condition].volume;
 
   // --- TRIGGER LEFT ---
-  if (state.filteredL > state.gyroThresholdValue && !state.isInSwingL) {
+  if (filteredL > gyroThreshold && !isInSwingL) {
     // Only proceed if 300ms has passed since ANY previous trigger
-    if (now - state.lastTriggerTime > minInterval) {
-      state.isInSwingL = true;
-      state.lastTriggerTime = now; // Record this trigger time
+    if (now - lastTriggerTime > limitGatems) {
+      isInSwingL = true;
+      lastTriggerTime = now; // Record this trigger time
 
-      state.randomFrame = Math.floor(Math.random() * 6) + 1;
+      randomFrame = Math.floor(Math.random() * 6) + 1;
 
       setTimeout(() => {
-        playSample(audioContext, state.samples[footstepsBank[state.randomFrame*10+ 1 + conditionSet - 1]], 0, output,state.volumeCond);
-      }, triggerDelayS);
+        playSample(audioContext, samples[footstepsBank[randomFrame * 10 + 1 + conditionOffset - 1]], 0, sonificationGain, volume);
+      }, delay);
 
       state.set('eventLeft', true);
-      console.log('[script:process] Filtered Trigger LEFT', state.randomFrame*10+ 1 + conditionSet - 1,state.volumeCond);
+      console.log('[script:process] Filtered Trigger LEFT', randomFrame * 10 + 1 + conditionOffset - 1, volume);
     }
   }
 
   // RESET LEFT
-  if (state.filteredL < (state.gyroThresholdValue * 0.4)) {
-    state.isInSwingL = false;
+  if (filteredL < (gyroThreshold * 0.4)) {
+    isInSwingL = false;
   }
 
   // --- TRIGGER RIGHT ---
-  if (state.filteredR > state.gyroThresholdValue && !state.isInSwingR) {
+  if (filteredR > gyroThreshold && !isInSwingR) {
     // Only proceed if 300ms has passed since ANY previous trigger
-    if (now - state.lastTriggerTime > minInterval) {
-      state.isInSwingR = true;
-      state.lastTriggerTime = now; // Record this trigger time
+    if (now - lastTriggerTime > limitGatems) {
+      isInSwingR = true;
+      lastTriggerTime = now; // Record this trigger time
 
       setTimeout(() => {
-        playSample(audioContext, state.samples[footstepsBank[state.randomFrame*10+  4 + conditionSet - 1]], 0, output,state.volumeCond);
-      }, triggerDelayS);
+        playSample(audioContext, samples[footstepsBank[randomFrame * 10 +  4 + conditionOffset - 1]], 0, sonificationGain, volume);
+      }, delay);
 
       state.set('eventRight', true);
-      console.log('[script:process] Filtered Trigger RIGHT',state.randomFrame*10+ 4 + conditionSet - 1);
+      console.log('[script:process] Filtered Trigger RIGHT',randomFrame * 10 + 4 + conditionOffset - 1);
     }
   }
 
   // RESET RIGHT
-  if (state.filteredR < (state.gyroThresholdValue * 0.4)) {
-    state.isInSwingR = false;
+  if (filteredR < (gyroThreshold * 0.4)) {
+    isInSwingR = false;
   }
 }

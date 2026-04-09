@@ -22,7 +22,8 @@ async function main($container) {
     initScreensContainer: $container,
     reloadOnVisibilityChange: false,
   });
-const como = new ComoClient(client);
+
+  const como = new ComoClient(client);
   await como.start();
 
   const targetSessionId = "c2414a35-4d0a-46d4-82e8-1288009ab82d";
@@ -30,16 +31,16 @@ const como = new ComoClient(client);
   const autoLoadSession = async () => {
     // 1. CRITICAL GUARD: Check if BOTH project and state are ready
     if (como.project && como.project.state) {
-      
+
       // 2. Check if the 'sessions' parameter actually exists in the state
       const schema = como.project.state.getSchema();
       const sessions = como.project.state.get('sessions');
-      
+
       if (sessions && sessions[targetSessionId]) {
         try {
           // 3. Set the session using the wrapper method
           await como.project.set({ sessionId: targetSessionId });
-          
+
           console.log(`%c[Success] Attached to session: test`, "color: #00ff00; font-weight: bold");
           return true; // Stop the interval
         } catch (err) {
@@ -49,7 +50,7 @@ const como = new ComoClient(client);
         }
       }
     }
-    
+
     // If we reach here, the state isn't ready or sessions aren't loaded yet
     return false;
   };
@@ -62,17 +63,17 @@ const como = new ComoClient(client);
     }
   }, 100);
 
-  
 
 
 
-  
+
+
 
   const controller = await como.stateManager.create('controller', {
     showEditScriptPanel: false,
-    
+
   });
-  
+
   controller.onUpdate(renderApp, true);
 
   function renderApp() {
@@ -114,22 +115,22 @@ launcher.execute(main, {
 
 /**
  * NEW Triggers a browser download for a text string
- 
+
 function downloadBlobAsFile(filename, text) {
   const blob = new Blob([text], { type: 'text/plain' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
-  
+
   link.href = url;
   link.download = `${filename}.txt`;
-  
+
   document.body.appendChild(link);
   link.click();
-  
+
   // Cleanup
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
-  
+
   console.log(`[Controller] Download triggered for: ${filename}.txt`);
 }
 
