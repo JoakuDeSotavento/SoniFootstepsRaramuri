@@ -17,7 +17,7 @@
     "watch:sass": "sass --watch src/styles:.build/public/css"
   },
   "dependencies": {
-    "@ircam/como": "^2.0.0-beta.10",
+    "@ircam/como": "^2.0.0-beta.11",
     "@ircam/sc-components": "^3.5.0",
     "@ircam/sc-loader": "^1.1.0",
     "@ircam/sc-scheduling": "^1.0.0",
