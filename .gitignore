@@ -15,4 +15,4 @@ Thumbs.db
 # TLS certificates
 /**/*.pem
 
-projects/**/logs
+**/logs
