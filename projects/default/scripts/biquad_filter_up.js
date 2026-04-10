@@ -40,7 +40,7 @@ let filteredL = 0;
 let filteredR = 0;
 let isInSwingL = false;
 let isInSwingR = false;
-
+let lastTriggerTime = 0;
 let writer;
 
 const footstepsBank = {
@@ -116,18 +116,10 @@ export async function defineSharedState(como) {
         type: 'boolean',
         default: false,
       },
-      // triggerFootstepFrame: {
-      //       type: 'boolean',
-      //        event: true,
 
-      //    },
-      invertThreshold: {
-        type: 'boolean',
-        default: false,
-      },
       gyroThreshold: {
         type: 'float',
-        default: 2,
+        default: 1.5,
         min: 0,
         max: 4,
       },
@@ -139,7 +131,7 @@ export async function defineSharedState(como) {
       },
       limitGatems: {
         type: 'float',
-        default: 0,
+        default: 350,
         min: 0,
         max: 500,
       },
@@ -157,19 +149,19 @@ export async function defineSharedState(como) {
       volumeC: {
         type: 'float',
         default: 0,
-        min: -6,
+        min: -12,
         max: 0,
       },
       volumeLF: {
         type: 'float',
         default: -3,
-        min: -6,
+        min: -12,
         max: 0,
       },
       volumeHF: {
         type: 'float',
         default: 0,
-        min: -6,
+        min: -12,
         max: 0,
       },
       eventLeft: {
@@ -183,11 +175,11 @@ export async function defineSharedState(como) {
       // background synth stuff
       enableBackgroundSynth: {
         type: 'boolean',
-        default: false,
+        default: true,
       },
       backgroundSynthVolume: {
         type: 'float',
-        default: 0,
+        default: -20,
         min: -80,
         max: 12,
       },
@@ -335,7 +327,7 @@ export async function process(context, frame) {
   const delay = state.get('delay');
   const gyroThreshold = state.get('gyroThreshold');
   const conditionOffset = Object.keys(conditionConfigs).indexOf(condition) + 1;
-  const volume = conditionConfigs[condition].volume;
+  const volume = decibelToLinear(conditionConfigs[condition].volume);
 
   // --- TRIGGER LEFT ---
   if (filteredL > gyroThreshold && !isInSwingL) {
@@ -348,6 +340,8 @@ export async function process(context, frame) {
 
       setTimeout(() => {
         playSample(audioContext, samples[footstepsBank[randomFrame * 10 + 1 + conditionOffset - 1]], 0, sonificationGain, volume);
+    
+       // playSample(audioContext, samples[footstepsBank[randomFrame * 10 + 1 + conditionOffset - 1]], 0, volume, volume);
       }, delay);
 
       state.set('eventLeft', true);
@@ -368,11 +362,13 @@ export async function process(context, frame) {
       lastTriggerTime = now; // Record this trigger time
 
       setTimeout(() => {
+        //playSample(audioContext, samples[footstepsBank[randomFrame * 10 +  4 + conditionOffset - 1]], 0, volume, volume);
         playSample(audioContext, samples[footstepsBank[randomFrame * 10 +  4 + conditionOffset - 1]], 0, sonificationGain, volume);
+        
       }, delay);
 
       state.set('eventRight', true);
-      console.log('[script:process] Filtered Trigger RIGHT',randomFrame * 10 + 4 + conditionOffset - 1);
+      console.log('[script:process] Filtered Trigger RIGHT',randomFrame * 10 + 4 + conditionOffset - 1,volume);
     }
   }
 

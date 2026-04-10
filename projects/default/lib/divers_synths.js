@@ -92,7 +92,7 @@ export function stopWhiteNoise() {
     }
 }
 
-export function playSampleWithEnvelope(audioContext, buffer, adsrParams, noteParams, output,volumeDb = 0) {
+export function playSampleWithEnvelope(audioContext, buffer, adsrParams, noteParams, output) {
     if (!buffer) return;
     
     // Create source and gain node for envelope
@@ -134,13 +134,15 @@ export function playSampleWithEnvelope(audioContext, buffer, adsrParams, notePar
 };
 
 
-export function playSample(audioContext, buffer, triggerDelay, output, volumeDb = 0) {
+export function playSample(audioContext, buffer, triggerDelay, output, volume) {
     if (!buffer) return;    
     const source = audioContext.createBufferSource();
     const gainNode = audioContext.createGain();
     source.buffer = buffer;
     source.loop = true; 
-    gainNode.gain.value = decibelToLinear(volumeDb);    
+    //gainNode.gain.value = decibelToLinear(volumeDb);    
+    gainNode.gain.value = volume;    
+    
     source.connect(gainNode);
     gainNode.connect(output);    
     const currentTime = audioContext.currentTime;
