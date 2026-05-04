@@ -1,6 +1,9 @@
-# `como-health`
+# `sonifootsteps raramuri`
 
-Thanks for using soundworks!
+Interactive Platform for the Sonification of Walking Activity with prerecorded footstep sounds. The system is based on como (https://ircam-ismm.github.io/como/)
+
+
+
 
 ## Links / Resources
 
