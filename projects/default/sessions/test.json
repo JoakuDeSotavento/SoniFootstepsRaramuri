@@ -1,7 +1,7 @@
 {
   "uuid": "c2414a35-4d0a-46d4-82e8-1288009ab82d",
   "name": "test",
-  "defaultScript": "biquad_filter_up.js",
+  "defaultScript": "test_joaku.js",
   "mute": false,
   "volume": 10,
   "soundbank": [
