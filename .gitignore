@@ -16,3 +16,18 @@ Thumbs.db
 /**/*.pem
 
 **/logs
+skills-lock.json
+.agents/skills/systematic-debugging/test-pressure-3.md
+.agents/skills/systematic-debugging/test-pressure-2.md
+.agents/skills/systematic-debugging/test-pressure-1.md
+.agents/skills/systematic-debugging/test-academic.md
+.agents/skills/systematic-debugging/SKILL.md
+.agents/skills/systematic-debugging/root-cause-tracing.md
+.agents/skills/systematic-debugging/find-polluter.sh
+.agents/skills/systematic-debugging/defense-in-depth.md
+.agents/skills/systematic-debugging/CREATION-LOG.md
+.agents/skills/systematic-debugging/condition-based-waiting.md
+.agents/skills/systematic-debugging/condition-based-waiting-example.ts
+.agents/skills/nodejs-best-practices/SKILL.md
+.agents/skills/explore-codebase/SKILL.md
+AGENTS.md
