@@ -310,6 +310,11 @@ export async function exit(context) {
 export async function process(context, frame) {
   const { scriptName, output, state, soundbank } = context;
 
+  // Wait until both R-IoT sensors provide valid gyroscope data. This is the line that prevents the script from crashing when one or both of the sensors is not yet ready.
+  if (!frame?.[0]?.gyroscope || !frame?.[1]?.gyroscope) {
+    return;
+  }
+
   // 1. Raw inputs
   let rawL = frame[1].gyroscope.z;
   let rawR = -1 * frame[0].gyroscope.z; // Normalizing Right to be positive

@@ -41,4 +41,5 @@ R-IoT + scripts + audio
 
 The deployment pipeline uses the generated `.build/` output and runs the server and device client independently.
 
-> **Note:** `npm run start` currently points to `.build/server/index.js`, while the build generates `.build/server.js`. The working server entry point is therefore `node .build/server.js`.
+> **Note:** `npm run start` currently points to `.build/server/index.js`, while the build generates `.build/server.js`. The working server entry point is therefore `node .build/server.js`. 
+Reconnecting the R-IoT devices may temporarily interrupt SSH connectivity to the Raspberry Pi, while the Soundworks server, device client, R-IoT processing and audio continue operating normally. Connectivity is restored automatically.
