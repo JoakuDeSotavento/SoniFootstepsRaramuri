@@ -346,7 +346,7 @@ export async function process(context, frame) {
       setTimeout(() => {
         playSample(audioContext, samples[footstepsBank[randomFrame * 10 + 1 + conditionOffset - 1]], 0, sonificationGain, volume);
     
-       // playSample(audioContext, samples[footstepsBank[randomFrame * 10 + 1 + conditionOffset - 1]], 0, volume, volume);
+      // playSample(audioContext, samples[footstepsBank[randomFrame * 10 + 1 + conditionOffset - 1]], 0, volume, volume);
       }, delay);
 
       state.set('eventLeft', true);

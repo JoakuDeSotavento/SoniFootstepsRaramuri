@@ -5,6 +5,12 @@
   "license": "BSD-3-Clause",
   "version": "0.0.0",
   "type": "module",
+  "imports": {
+    "#layer-synth/loader.js": {
+      "browser": "./synths/layer-synth/loader.browser.js",
+      "node": "./synths/layer-synth/loader.node.js"
+    }
+  },
   "private": true,
   "scripts": {
     "build": "npm run clean && sass src/styles:.build/public/css && soundworks-build -b",

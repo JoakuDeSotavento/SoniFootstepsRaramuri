@@ -1,8 +1,4 @@
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+import { loadSoundbank } from '#layer-synth/loader.js';
 
 import { Scheduler } from '@ircam/sc-scheduling';
 import {
@@ -50,24 +46,10 @@ export async function createLayerSynth(audioContext, audioBufferLoader, soundban
     throw new Error(`Cannot execute "createLayerSynth": soundbank (${soundbank}) does not exists`);
   }
 
-  const layersPathname = path.join(__dirname, 'soundbanks', soundbank, 'layers');
-  const layersList = fs.readdirSync(layersPathname, { recursive: true })
-    .filter(item => !(/(^|\/)\.[^\/\.]/g).test(item))
-    .map(item => path.join(layersPathname, item))
-    .filter(item => fs.statSync(item).isFile());
-
-  const layers = await audioBufferLoader.load(layersList);
-
-  const shortsPathname = path.join(__dirname, 'soundbanks', soundbank, 'shorts');
-  const shortsList = fs.readdirSync(shortsPathname, { recursive: true })
-    .filter(item => !(/(^|\/)\.[^\/\.]/g).test(item))
-    .map(item => path.join(shortsPathname, item))
-    .filter(item => fs.statSync(item).isFile());
-
-  const shorts = await audioBufferLoader.load(shortsList);
+  const layers = await loadSoundbank(audioBufferLoader, soundbank);
 
   const synth = new LayerSynth(audioContext);
-  synth.soundbank = { layers, shorts };
+  synth.soundbank = layers;
 
   return synth;
 }
