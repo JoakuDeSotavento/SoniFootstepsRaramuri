@@ -1,0 +1,18 @@
+[Unit]
+Description=Soni Footsteps Raramuri (soundworks server + device)
+Wants=network-online.target sound.target
+After=network-online.target sound.target
+
+[Service]
+Type=simple
+User=pi
+Group=pi
+WorkingDirectory=/home/pi/projects/SoniFootstepsRaramuri
+Environment=HOME=/home/pi
+Environment=XDG_RUNTIME_DIR=/run/user/1000
+ExecStart=/usr/bin/npm run start
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
